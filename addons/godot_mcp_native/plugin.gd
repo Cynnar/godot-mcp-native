@@ -9,6 +9,7 @@ const ToolRegistry := preload("res://addons/godot_mcp_native/tool_registry.gd")
 const CoreTools := preload("res://addons/godot_mcp_native/tools/core_tools.gd")
 const EditorTools := preload("res://addons/godot_mcp_native/tools/editor_tools.gd")
 const EditorWriteTools := preload("res://addons/godot_mcp_native/tools/editor_write_tools.gd")
+const ScriptTools := preload("res://addons/godot_mcp_native/tools/script_tools.gd")
 const McpDock := preload("res://addons/godot_mcp_native/ui/mcp_dock.gd")
 
 const PREFERRED_PORT := 6550
@@ -31,6 +32,9 @@ func _enter_tree() -> void:
 	var write_tools := EditorWriteTools.new()
 	write_tools.register(_registry, self)
 	_tool_modules.append(write_tools)
+	var script_tools := ScriptTools.new()
+	script_tools.register(_registry, self)
+	_tool_modules.append(script_tools)
 
 	_protocol = McpProtocol.new(_registry)
 	_http = McpHttpServer.new()

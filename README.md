@@ -2,7 +2,7 @@
 
 Drop-in Godot 4 editor plugin that runs a built-in MCP server, so Claude and other AI clients can control the editor with no Python, Node or extra setup.
 
-> **Status: early development (v0.1.0).** The server, MCP protocol layer and a `ping` tool work end to end, plus read tools and the first undoable write tools. Scripts, run/stop and screenshots are next.
+> **Status: early development (v0.1.0).** The server, MCP protocol layer and a `ping` tool work end to end, plus read tools, undoable scene write tools and script tools. Run/stop, screenshots and the output log are next.
 
 ## How it works
 
@@ -43,7 +43,14 @@ Click **Copy Claude Desktop config** and merge it into `claude_desktop_config.js
 | `delete_node` | Delete a node and its children (not the scene root) |
 | `save_scene` | Save the edited scene, or save a new scene to a `res://` path |
 
-All changes go through the editor's undo/redo, so **Ctrl+Z** reverts what the AI did.
+| `list_scripts` | List `.gd` files in the project |
+| `view_script` | Read a script (line ranges supported) |
+| `create_script` | Create a script, from a template or full source |
+| `update_script` | Replace a whole script file |
+| `edit_script` | Replace an exact piece of text in a script |
+| `attach_script` | Attach or detach a script on a node |
+
+Scene changes go through the editor's undo/redo, so **Ctrl+Z** reverts what the AI did. Script file changes are written to disk and are not part of that history, so use version control (git) to roll them back. The plugin's own scripts are protected from modification.
 
 Node paths are relative to the root of the scene being edited. Godot types such as `Vector3` or `Color` are returned in Godot text form, e.g. `"Vector3(1, 2, 3)"`.
 
