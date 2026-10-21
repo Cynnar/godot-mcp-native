@@ -2,7 +2,7 @@
 
 Drop-in Godot 4 editor plugin that runs a built-in MCP server, so Claude and other AI clients can control the editor with no Python, Node or extra setup.
 
-> **Status: early development (v0.1.0).** The server, MCP protocol layer and a `ping` tool work end to end, plus the first read-only editor tools. Write tools (create/modify nodes, scripts, run/stop, screenshots) are next.
+> **Status: early development (v0.1.0).** The server, MCP protocol layer and a `ping` tool work end to end, plus read tools and the first undoable write tools. Scripts, run/stop and screenshots are next.
 
 ## How it works
 
@@ -38,6 +38,12 @@ Click **Copy Claude Desktop config** and merge it into `claude_desktop_config.js
 | `get_scene_info` | Open scenes, the scene being edited, root node, node count, play state |
 | `get_hierarchy` | Node tree of the edited scene (name, type, path, script) |
 | `get_node_properties` | Editor-visible properties of a node |
+| `create_node` | Create a node of any Godot node class, optionally with initial properties |
+| `set_property` | Set a node property (supports Godot text form, JSON arrays for vectors/colors, `res://` paths for resources) |
+| `delete_node` | Delete a node and its children (not the scene root) |
+| `save_scene` | Save the edited scene, or save a new scene to a `res://` path |
+
+All changes go through the editor's undo/redo, so **Ctrl+Z** reverts what the AI did.
 
 Node paths are relative to the root of the scene being edited. Godot types such as `Vector3` or `Color` are returned in Godot text form, e.g. `"Vector3(1, 2, 3)"`.
 

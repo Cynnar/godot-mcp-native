@@ -1,0 +1,10 @@
+[gd_scene format=3 uid="uid://d2nugqgwld5oe"]
+
+[node name="Node2D" type="Node2D" unique_id=88779623]
+
+[node name="Sprite2D" type="Sprite2D" parent="." unique_id=1714283557]
+position = Vector2(100, 50)
+
+[node name="Camera2D" type="Camera2D" parent="Sprite2D" unique_id=747741149]
+
+[node name="Node3D" type="Node3D" parent="Sprite2D" unique_id=1639698601]

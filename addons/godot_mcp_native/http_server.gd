@@ -21,6 +21,7 @@ var port := 0
 var _server := TCPServer.new()
 var _clients: Array = []
 var _handler: Callable
+var _polling := false
 
 
 ## Starts listening on the first free port in [preferred_port, preferred_port + attempts).
@@ -43,6 +44,7 @@ func stop() -> void:
 	if _server.is_listening():
 		_server.stop()
 	port = 0
+	_polling = false
 
 
 func is_running() -> bool:
@@ -50,17 +52,28 @@ func is_running() -> bool:
 
 
 ## Call every frame.
+##
+## Re-entrancy guard: some editor operations a tool can trigger (saving a scene,
+## importing, ...) run the editor's main loop while they work, which calls the
+## plugin's _process again from inside the request being handled. Without this
+## guard that nested poll would pick up the same request again and recurse
+## until the stack overflows. While a request is being handled, nested polls do
+## nothing; queued requests are served once the outer poll finishes.
 func poll() -> void:
-	if not _server.is_listening():
+	if _polling or not _server.is_listening():
 		return
+	_polling = true
 	while _server.is_connection_available():
 		var c := _Client.new()
 		c.peer = _server.take_connection()
 		c.since_msec = Time.get_ticks_msec()
 		_clients.append(c)
-	for i in range(_clients.size() - 1, -1, -1):
-		if _service(_clients[i]):
-			_clients.remove_at(i)
+	# Iterate over a copy so stop() or other changes during a handler can't
+	# invalidate the loop.
+	for c in _clients.duplicate():
+		if _service(c):
+			_clients.erase(c)
+	_polling = false
 
 
 ## Returns true when the client is finished (answered, failed or timed out).
