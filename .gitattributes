@@ -1,0 +1,8 @@
+# Normalize line endings so Windows and Linux checkouts match.
+* text=auto eol=lf
+
+# Keep the development project out of release archives (git archive /
+# Asset Library downloads) so users receive only addons/godot_mcp_native/.
+/.gitattributes export-ignore
+/.gitignore export-ignore
+/project.godot export-ignore
