@@ -29,7 +29,7 @@ func register(registry, log_capture) -> void:
 	)
 	registry.add_tool(
 		"get_output_log",
-		"Read recent messages logged by the Godot editor process: print() output and push_error/push_warning from @tool scripts, script compile errors, and editor errors. It does NOT include output from the running game, which is a separate process. Each entry has an id; pass the latest_id you got last time as since_id to read only newer entries.",
+		"Read recent log messages. Entries from the editor (source \"editor\") are print() and push_error/push_warning from @tool scripts, script compile errors and editor errors. Entries from the running game (source \"game\") are its print() output, errors and warnings, forwarded by the bridge autoload while the game runs. Each entry has an id; pass the latest_id you got last time as since_id to read only newer entries.",
 		{
 			"type": "object",
 			"properties": {
@@ -37,6 +37,11 @@ func register(registry, log_capture) -> void:
 					"type": "string",
 					"enum": ["all", "error", "warning", "info"],
 					"description": "Only return entries of this level. Default all.",
+				},
+				"source": {
+					"type": "string",
+					"enum": ["all", "editor", "game"],
+					"description": "Only return entries from the editor or from the running game. Default all.",
 				},
 				"max_entries": {
 					"type": "integer",
@@ -99,15 +104,18 @@ func _get_output_log(arguments: Dictionary) -> Dictionary:
 	var level := str(arguments.get("level", "all"))
 	if not level in ["all", "error", "warning", "info"]:
 		return {"error": "level must be one of: all, error, warning, info."}
+	var source := str(arguments.get("source", "all"))
+	if not source in ["all", "editor", "game"]:
+		return {"error": "source must be one of: all, editor, game."}
 	var max_entries := clampi(int(arguments.get("max_entries", 100)), 1, 1000)
 	var since_id := maxi(0, int(arguments.get("since_id", 0)))
 
-	var entries: Array = _log.read(since_id, level, max_entries)
+	var entries: Array = _log.read(since_id, level, max_entries, source)
 	var result := {
 		"entries": entries,
 		"count": entries.size(),
 		"latest_id": _log.last_id(),
-		"scope": "editor process only (not the running game)",
+		"note": "Each entry has a source: \"editor\" or \"game\".",
 	}
 	if bool(arguments.get("clear", false)):
 		_log.clear()

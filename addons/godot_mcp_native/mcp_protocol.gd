@@ -11,6 +11,27 @@ const SUPPORTED_VERSIONS := ["2025-06-18", "2025-03-26", "2024-11-05"]
 const ENDPOINT := "/mcp"
 const LOCAL_HOSTS := ["127.0.0.1", "localhost"]
 
+const AsyncResult := preload("res://addons/godot_mcp_native/async_result.gd")
+
+## A tools/call whose answer is not ready yet. The HTTP server polls is_ready()
+## and then sends build_response().
+class PendingReply extends RefCounted:
+	var _protocol
+	var _id: Variant
+	var _async
+
+	func _init(protocol, id: Variant, async_result) -> void:
+		_protocol = protocol
+		_id = id
+		_async = async_result
+
+	func is_ready() -> bool:
+		return _async.is_ready()
+
+	func build_response() -> Dictionary:
+		var outcome: Dictionary = _protocol._registry.format_result(_async.get_value())
+		return _protocol._json_response(200, _protocol._ok(_id, _protocol._tool_content(outcome)))
+
 var _registry
 
 
@@ -47,6 +68,8 @@ func handle_http(method: String, target: String, headers: Dictionary, body: Stri
 		var replies := []
 		for message in parsed:
 			var reply = _handle_message(message)
+			if reply is PendingReply:
+				reply = _error(_normalize_id(message.get("id")), -32603, "Tools that wait for the game cannot be used inside a batch request")
 			if reply != null:
 				replies.append(reply)
 		if replies.is_empty():
@@ -56,11 +79,14 @@ func handle_http(method: String, target: String, headers: Dictionary, body: Stri
 	var single = _handle_message(parsed)
 	if single == null:
 		return {"status": 202, "body": ""}
+	if single is PendingReply:
+		return {"pending": single}
 	return _json_response(200, single)
 
 
 ## Returns a JSON-RPC response Dictionary, or null when nothing should be sent
 ## (notifications and client responses).
+## May also return a PendingReply for tools that answer later.
 func _handle_message(message: Variant) -> Variant:
 	if typeof(message) != TYPE_DICTIONARY:
 		return _error(null, -32600, "Invalid Request")
@@ -103,18 +129,25 @@ func _initialize(params: Dictionary) -> Dictionary:
 	}
 
 
-func _tools_call(id: Variant, params: Dictionary) -> Dictionary:
+func _tools_call(id: Variant, params: Dictionary) -> Variant:
 	var tool_name := str(params.get("name", ""))
 	if not _registry.has_tool(tool_name):
 		return _error(id, -32602, "Unknown tool: %s" % tool_name)
 	var arguments = params.get("arguments", {})
 	if typeof(arguments) != TYPE_DICTIONARY:
 		arguments = {}
-	var outcome: Dictionary = _registry.call_tool(tool_name, arguments)
-	return _ok(id, {
-		"content": [{"type": "text", "text": outcome["text"]}],
-		"isError": outcome["is_error"],
-	})
+	var result = _registry.call_tool(tool_name, arguments)
+	if result is AsyncResult:
+		return PendingReply.new(self, id, result)
+	return _ok(id, _tool_content(_registry.format_result(result)))
+
+
+func _tool_content(outcome: Dictionary) -> Dictionary:
+	var content: Array = [{"type": "text", "text": outcome["text"]}]
+	var image: Variant = outcome.get("image")
+	if typeof(image) == TYPE_DICTIONARY:
+		content.append({"type": "image", "data": str(image.get("data", "")), "mimeType": str(image.get("mime", "image/png"))})
+	return {"content": content, "isError": outcome["is_error"]}
 
 
 # JSON parsing turns every number into a float (1 -> 1.0). Echo whole-number

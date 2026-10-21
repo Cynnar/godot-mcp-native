@@ -13,6 +13,10 @@ config_version=5
 config/name="GodotMCPNative"
 config/features=PackedStringArray("4.7")
 
+[autoload]
+
+GodotMcpNativeBridge="*res://addons/godot_mcp_native/runtime/mcp_runtime_bridge.gd"
+
 [editor_plugins]
 
 enabled=PackedStringArray("res://addons/godot_mcp_native/plugin.cfg")

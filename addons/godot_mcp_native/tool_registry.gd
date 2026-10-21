@@ -35,11 +35,22 @@ func list_tools() -> Array:
 	return out
 
 
-## Runs a tool. Returns {"text": String, "is_error": bool}.
-func call_tool(tool_name: String, arguments: Dictionary) -> Dictionary:
+## Runs a tool. Returns the tool's raw result (possibly an AsyncResult).
+func call_tool(tool_name: String, arguments: Dictionary) -> Variant:
 	var t: Dictionary = _tools[tool_name]
 	var callable: Callable = t["callable"]
-	var result = callable.call(arguments)
+	return callable.call(arguments)
+
+
+## Turns a finished tool result into {"text": String, "is_error": bool, "image": Variant}.
+## A result Dictionary may carry "_image": {"data": base64 String, "mime": String};
+## it is removed from the text and returned separately as "image" (null if none).
+func format_result(result: Variant) -> Dictionary:
+	var image: Variant = null
+	if typeof(result) == TYPE_DICTIONARY and result.has("_image"):
+		result = result.duplicate()
+		image = result["_image"]
+		result.erase("_image")
 	var is_error: bool = typeof(result) == TYPE_DICTIONARY and result.has("error")
 	var text: String = result if typeof(result) == TYPE_STRING else JSON.stringify(result, "  ")
-	return {"text": text, "is_error": is_error}
+	return {"text": text, "is_error": is_error, "image": image}

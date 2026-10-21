@@ -51,11 +51,12 @@ Click **Copy Claude Desktop config** and merge it into `claude_desktop_config.js
 | `attach_script` | Attach or detach a script on a node |
 | `play_scene` | Run the edited scene, the main scene, or a `res://` scene |
 | `stop_scene` | Stop the running scene |
-| `get_output_log` | Recent editor-process log messages (prints, errors, script compile errors) |
+| `get_output_log` | Recent log messages from the editor and the running game (filter with `source`) |
+| `get_game_screenshot` | Image of what the running game is drawing |
 
 Scene changes go through the editor's undo/redo, so **Ctrl+Z** reverts what the AI did. Script file changes are written to disk and are not part of that history, so use version control (git) to roll them back. The plugin's own scripts are protected from modification.
 
-`get_output_log` shows messages from the **editor** process. The running game is a separate process, so its output is not included yet.
+The running game is a separate process, so the plugin adds a small autoload (`GodotMcpNativeBridge`) to `project.godot` while it is enabled. It talks to the editor over Godot's debugger channel to provide game screenshots and game log output, and does nothing in exported builds. Disabling the plugin removes the autoload. If you export the project, remove the autoload (or the addon) first.
 
 Node paths are relative to the root of the scene being edited. Godot types such as `Vector3` or `Color` are returned in Godot text form, e.g. `"Vector3(1, 2, 3)"`.
 

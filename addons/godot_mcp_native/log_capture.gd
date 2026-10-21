@@ -1,7 +1,8 @@
 @tool
 extends Logger
 ## Collects engine log output (print, push_error, push_warning, script and
-## shader errors) from the editor process into a bounded buffer for the tools.
+## shader errors) from the editor process, plus lines forwarded from the running
+## game, into a bounded buffer for the tools.
 ##
 ## Godot may call the virtual methods below from ANY thread, possibly at the
 ## same time, so everything that touches the buffer is guarded by a mutex.
@@ -50,7 +51,7 @@ func last_id() -> int:
 
 ## Returns copies of the entries newer than since_id, at most max_entries of the
 ## most recent ones. level_filter is "all", "error", "warning" or "info".
-func read(since_id: int = 0, level_filter: String = "all", max_entries: int = 100) -> Array:
+func read(since_id: int = 0, level_filter: String = "all", max_entries: int = 100, source_filter: String = "all") -> Array:
 	var out := []
 	_mutex.lock()
 	for entry in _entries:
@@ -58,11 +59,21 @@ func read(since_id: int = 0, level_filter: String = "all", max_entries: int = 10
 			continue
 		if level_filter != "all" and entry["level"] != level_filter:
 			continue
+		if source_filter != "all" and entry.get("source", "editor") != source_filter:
+			continue
 		out.append(entry.duplicate())
 	_mutex.unlock()
 	if out.size() > max_entries:
 		out = out.slice(out.size() - max_entries)
 	return out
+
+
+## Adds a ready-made entry (used for log lines forwarded from the running game).
+## Expects "level" and "text"; "source" defaults to "editor".
+func add_entry(entry: Dictionary) -> void:
+	if not entry.has("level") or not entry.has("text"):
+		return
+	_add(entry.duplicate())
 
 
 func clear() -> void:
@@ -73,6 +84,8 @@ func clear() -> void:
 
 func _add(entry: Dictionary) -> void:
 	entry["text"] = String(entry["text"]).left(MAX_TEXT_CHARS)
+	if not entry.has("source"):
+		entry["source"] = "editor"
 	_mutex.lock()
 	_last_id += 1
 	entry["id"] = _last_id

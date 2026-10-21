@@ -12,9 +12,13 @@ const EditorTools := preload("res://addons/godot_mcp_native/tools/editor_tools.g
 const EditorWriteTools := preload("res://addons/godot_mcp_native/tools/editor_write_tools.gd")
 const ScriptTools := preload("res://addons/godot_mcp_native/tools/script_tools.gd")
 const RunTools := preload("res://addons/godot_mcp_native/tools/run_tools.gd")
+const GameBridge := preload("res://addons/godot_mcp_native/game_bridge.gd")
+const GameTools := preload("res://addons/godot_mcp_native/tools/game_tools.gd")
 const McpDock := preload("res://addons/godot_mcp_native/ui/mcp_dock.gd")
 
 const PREFERRED_PORT := 6550
+const AUTOLOAD_NAME := "GodotMcpNativeBridge"
+const AUTOLOAD_PATH := "res://addons/godot_mcp_native/runtime/mcp_runtime_bridge.gd"
 
 var _http: McpHttpServer
 var _protocol: McpProtocol
@@ -22,11 +26,19 @@ var _registry: ToolRegistry
 var _log_capture: LogCapture
 var _tool_modules: Array = []  # kept alive: Callables do not hold RefCounted objects
 var _dock: McpDock
+var _game_bridge: GameBridge
 
 
 func _enter_tree() -> void:
 	_log_capture = LogCapture.new()
 	OS.add_logger(_log_capture)
+
+	# The runtime bridge lives in the game process as an autoload. Ensure it on
+	# every load (the plugin may already have been enabled in project.godot).
+	if not ProjectSettings.has_setting("autoload/" + AUTOLOAD_NAME):
+		add_autoload_singleton(AUTOLOAD_NAME, AUTOLOAD_PATH)
+	_game_bridge = GameBridge.new(_log_capture)
+	add_debugger_plugin(_game_bridge)
 
 	_registry = ToolRegistry.new()
 	var core := CoreTools.new()
@@ -44,6 +56,10 @@ func _enter_tree() -> void:
 	var run_tools := RunTools.new()
 	run_tools.register(_registry, _log_capture)
 	_tool_modules.append(run_tools)
+
+	var game_tools := GameTools.new()
+	game_tools.register(_registry, _game_bridge)
+	_tool_modules.append(game_tools)
 
 	_protocol = McpProtocol.new(_registry)
 	_http = McpHttpServer.new()
@@ -73,10 +89,19 @@ func _exit_tree() -> void:
 	if _dock:
 		remove_control_from_bottom_panel(_dock)
 		_dock.queue_free()
+	if _game_bridge:
+		remove_debugger_plugin(_game_bridge)
 	if _log_capture:
 		OS.remove_logger(_log_capture)
 	_http = null
 	_protocol = null
 	_registry = null
 	_log_capture = null
+	_game_bridge = null
 	_tool_modules.clear()
+
+
+## Called when the user turns the plugin off: take the autoload out of project.godot.
+func _disable_plugin() -> void:
+	if ProjectSettings.has_setting("autoload/" + AUTOLOAD_NAME):
+		remove_autoload_singleton(AUTOLOAD_NAME)

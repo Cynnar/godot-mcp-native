@@ -14,6 +14,7 @@ class _Client extends RefCounted:
 	var peer: StreamPeerTCP
 	var buffer := PackedByteArray()
 	var since_msec := 0
+	var pending = null  # a reply object (is_ready / build_response) while waiting on a tool
 
 ## Port the server is listening on, or 0 when stopped.
 var port := 0
@@ -82,6 +83,11 @@ func _service(c: _Client) -> bool:
 	peer.poll()
 	if peer.get_status() != StreamPeerTCP.STATUS_CONNECTED:
 		return true
+	if c.pending != null:
+		if c.pending.is_ready():
+			_respond(peer, c.pending.build_response())
+			return true
+		return false
 	if Time.get_ticks_msec() - c.since_msec > CLIENT_TIMEOUT_MSEC:
 		_respond(peer, {"status": 408, "body": ""})
 		return true
@@ -123,6 +129,9 @@ func _service(c: _Client) -> bool:
 
 	var body := c.buffer.slice(body_start, body_start + content_length).get_string_from_utf8()
 	var response: Dictionary = _handler.call(request_line[0], request_line[1], headers, body)
+	if response.has("pending"):
+		c.pending = response["pending"]
+		return false
 	_respond(peer, response)
 	return true
 
