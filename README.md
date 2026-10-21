@@ -2,7 +2,7 @@
 
 Drop-in Godot 4 editor plugin that runs a built-in MCP server, so Claude and other AI clients can control the editor with no Python, Node or extra setup.
 
-> **Status: early development (v0.1.0).** The server, MCP protocol layer and a `ping` tool work end to end, plus read tools, undoable scene write tools and script tools. Run/stop, screenshots and the output log are next.
+> **Status: early development (v0.1.0).** The server, MCP protocol layer and a `ping` tool work end to end, plus read tools, undoable scene write tools, script tools and run control. Game screenshots and output from the running game are next.
 
 ## How it works
 
@@ -49,8 +49,13 @@ Click **Copy Claude Desktop config** and merge it into `claude_desktop_config.js
 | `update_script` | Replace a whole script file |
 | `edit_script` | Replace an exact piece of text in a script |
 | `attach_script` | Attach or detach a script on a node |
+| `play_scene` | Run the edited scene, the main scene, or a `res://` scene |
+| `stop_scene` | Stop the running scene |
+| `get_output_log` | Recent editor-process log messages (prints, errors, script compile errors) |
 
 Scene changes go through the editor's undo/redo, so **Ctrl+Z** reverts what the AI did. Script file changes are written to disk and are not part of that history, so use version control (git) to roll them back. The plugin's own scripts are protected from modification.
+
+`get_output_log` shows messages from the **editor** process. The running game is a separate process, so its output is not included yet.
 
 Node paths are relative to the root of the scene being edited. Godot types such as `Vector3` or `Color` are returned in Godot text form, e.g. `"Vector3(1, 2, 3)"`.
 

@@ -11,10 +11,12 @@ const MAX_LIST_RESULTS := 1000
 const DEFAULT_VIEW_LINES := 2000
 
 var _plugin: EditorPlugin
+var _log  # optional LogCapture, used to report compile errors
 
 
-func register(registry, plugin: EditorPlugin) -> void:
+func register(registry, plugin: EditorPlugin, log_capture = null) -> void:
 	_plugin = plugin
+	_log = log_capture
 	registry.add_tool(
 		"list_scripts",
 		"List the GDScript (.gd) files in the project. Addons are skipped unless include_addons is true.",
@@ -264,6 +266,9 @@ func _write_script(path: String, text: String) -> Dictionary:
 	# otherwise load it fresh from disk. reload() then compiles it and its result
 	# tells us whether it is valid. (can_instantiate() is NOT usable for this: in
 	# the editor it returns false for every script that is not marked @tool.)
+	var log_mark := 0
+	if _log != null:
+		log_mark = _log.last_id()
 	var was_cached := ResourceLoader.has_cached(path)
 	var compiles := false
 	var reload_error: int = ERR_FILE_NOT_FOUND
@@ -277,8 +282,26 @@ func _write_script(path: String, text: String) -> Dictionary:
 
 	var result := {"path": path, "bytes": text.to_utf8_buffer().size(), "compiles": compiles}
 	if not compiles:
-		result["note"] = "The script did not compile (%s). Check the Output panel for the error." % error_string(reload_error)
+		result["note"] = "The script did not compile (%s)." % error_string(reload_error)
+		var problems := _errors_since(log_mark)
+		if problems.is_empty():
+			result["note"] += " Check the Output panel for the error."
+		else:
+			result["compile_errors"] = problems
 	return result
+
+
+## Error messages the editor logged since the given log id, as short strings.
+func _errors_since(since_id: int) -> Array:
+	var out := []
+	if _log == null:
+		return out
+	for entry in _log.read(since_id, "error", 10):
+		var text := str(entry["text"])
+		if entry.has("file") and not str(entry["file"]).is_empty():
+			text += " (%s:%d)" % [entry["file"], int(entry.get("line", 0))]
+		out.append(text)
+	return out
 
 
 func _normalize(path: String) -> String:
