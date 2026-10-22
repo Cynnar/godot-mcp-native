@@ -11,6 +11,9 @@ var _url_label := Label.new()
 var _buttons: Array[Button] = []
 var _port := 0
 var _read_only_check := CheckButton.new()
+var _log_view := RichTextLabel.new()
+var _registry = null
+var _log_dirty := false
 
 ## Emitted when the user flips the read-only switch.
 signal read_only_toggled(enabled: bool)
@@ -29,7 +32,60 @@ func _init() -> void:
 	add_child(_read_only_check)
 	_add_copy_button("Copy Claude Code command", _claude_code_command)
 	_add_copy_button("Copy Claude Desktop config", _claude_desktop_config)
+	var log_title := Label.new()
+	log_title.text = "Tool calls (newest at the bottom)"
+	add_child(log_title)
+	_log_view.bbcode_enabled = true
+	_log_view.scroll_following = true
+	_log_view.selection_enabled = true
+	_log_view.custom_minimum_size = Vector2(0, 140)
+	_log_view.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	add_child(_log_view)
+	var clear_button := Button.new()
+	clear_button.text = "Clear call log"
+	clear_button.pressed.connect(_on_clear_pressed)
+	add_child(clear_button)
 	set_port(0)
+
+
+## Connects the call log view to the tool registry.
+func set_registry(registry) -> void:
+	_registry = registry
+	registry.call_log_changed.connect(func(): _log_dirty = true)
+	_log_dirty = true
+	set_process(true)
+
+
+func _on_clear_pressed() -> void:
+	if _registry != null:
+		_registry.clear_call_log()
+
+
+func _process(_delta: float) -> void:
+	if _log_dirty:
+		_log_dirty = false
+		_refresh_log()
+
+
+func _refresh_log() -> void:
+	if _registry == null:
+		return
+	_log_view.clear()
+	for entry in _registry.call_log:
+		var color := "gray"
+		var mark := "..."
+		match str(entry["status"]):
+			"ok":
+				color = "green"
+				mark = "ok %d ms" % int(entry["ms"])
+			"error":
+				color = "red"
+				mark = "error %d ms" % int(entry["ms"])
+			"blocked":
+				color = "orange"
+				mark = "BLOCKED (read-only)"
+		var args_text := str(entry["args"]).replace("[", "[lb]")
+		_log_view.append_text("[color=gray]%s[/color]  [b]%s[/b]  %s  [color=%s]%s[/color]\n" % [entry["time"], entry["tool"], args_text, color, mark])
 
 
 ## Sets the switch without emitting read_only_toggled.

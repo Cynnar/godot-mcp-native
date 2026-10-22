@@ -81,6 +81,7 @@ func _enter_tree() -> void:
 	_dock = McpDock.new()
 	var editor_settings := EditorInterface.get_editor_settings()
 	_registry.read_only_mode = bool(editor_settings.get_setting(READ_ONLY_SETTING)) if editor_settings.has_setting(READ_ONLY_SETTING) else false
+	_dock.set_registry(_registry)
 	_dock.set_read_only(_registry.read_only_mode)
 	_dock.read_only_toggled.connect(_on_read_only_toggled)
 	add_control_to_bottom_panel(_dock, "MCP")

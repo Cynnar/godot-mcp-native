@@ -72,6 +72,8 @@ Node paths are relative to the root of the scene being edited. Godot types such 
 
 The server binds to `127.0.0.1` only and rejects requests whose `Host` or `Origin` is not local. It can still modify your project, so only enable the plugin in projects you are comfortable letting your AI client edit.
 
+**Call log:** the MCP panel lists every tool call the AI makes (time, tool, short arguments, result and duration), so you can see what it is doing. Blocked calls are shown in orange.
+
 **Read-only mode:** the MCP panel has a *Read-only mode* switch. While it is on, only tools that look but don't touch (reading scenes, scripts, settings, logs, screenshots) work; everything that changes the project or runs the game is refused. The switch is stored in your editor settings (not the project), and only a person can flip it, not the AI client. Read-only tools are marked with `readOnlyHint` in the tool list.
 
 ## Developing

@@ -4,6 +4,9 @@ extends RefCounted
 ## running game). The HTTP server keeps the client connection open until
 ## finish() is called or the deadline passes, then sends the result.
 
+## Emitted once, when the result becomes available (or the deadline passes).
+signal completed
+
 var done := false
 var value: Variant = null
 
@@ -21,6 +24,7 @@ func finish(result: Variant) -> void:
 		return
 	value = result
 	done = true
+	completed.emit()
 
 
 ## True when the result is available or the deadline has passed.
