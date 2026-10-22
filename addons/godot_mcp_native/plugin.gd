@@ -19,7 +19,9 @@ const GameBridge := preload("res://addons/godot_mcp_native/game_bridge.gd")
 const GameTools := preload("res://addons/godot_mcp_native/tools/game_tools.gd")
 const McpDock := preload("res://addons/godot_mcp_native/ui/mcp_dock.gd")
 
-const PREFERRED_PORT := 6550
+const DEFAULT_PORT := 6550
+## Per-project setting (stored in project.godot): the port the server tries first.
+const PORT_SETTING := "godot_mcp_native/port"
 const READ_ONLY_SETTING := "godot_mcp_native/read_only_mode"
 const AUTOLOAD_NAME := "GodotMcpNativeBridge"
 const AUTOLOAD_PATH := "res://addons/godot_mcp_native/runtime/mcp_runtime_bridge.gd"
@@ -76,7 +78,6 @@ func _enter_tree() -> void:
 
 	_protocol = McpProtocol.new(_registry)
 	_http = McpHttpServer.new()
-	var err := _http.start(PREFERRED_PORT, _protocol.handle_http)
 
 	_dock = McpDock.new()
 	var editor_settings := EditorInterface.get_editor_settings()
@@ -84,15 +85,40 @@ func _enter_tree() -> void:
 	_dock.set_registry(_registry)
 	_dock.set_read_only(_registry.read_only_mode)
 	_dock.read_only_toggled.connect(_on_read_only_toggled)
+	_dock.port_change_requested.connect(_on_port_change_requested)
 	add_control_to_bottom_panel(_dock, "MCP")
 
+	_start_server()
+	set_process(true)
+
+
+## The port the server should try first: the project's saved choice or the default.
+func _preferred_port() -> int:
+	return clampi(int(ProjectSettings.get_setting(PORT_SETTING, DEFAULT_PORT)), 1024, 65535)
+
+
+## (Re)starts the HTTP server on the preferred port, falling back to the next
+## free ports, and updates the dock.
+func _start_server() -> void:
+	var preferred := _preferred_port()
+	var err := _http.start(preferred, _protocol.handle_http)
+	_dock.set_preferred_port(preferred)
 	if err == OK:
 		_dock.set_port(_http.port)
 		print("[Godot MCP Native] listening on http://127.0.0.1:%d/mcp" % _http.port)
+		if _http.port != preferred:
+			print("[Godot MCP Native] port %d was busy, using %d instead" % [preferred, _http.port])
 	else:
 		_dock.set_port(0)
-		push_error("[Godot MCP Native] could not open a local port starting at %d" % PREFERRED_PORT)
-	set_process(true)
+		push_error("[Godot MCP Native] could not open a local port starting at %d" % preferred)
+
+
+func _on_port_change_requested(port: int) -> void:
+	port = clampi(port, 1024, 65535)
+	ProjectSettings.set_setting(PORT_SETTING, port)
+	ProjectSettings.save()
+	_http.stop()
+	_start_server()
 
 
 func _on_read_only_toggled(enabled: bool) -> void:

@@ -10,6 +10,9 @@ extends Logger
 
 const MAX_ENTRIES := 1000
 const MAX_TEXT_CHARS := 4000
+## Godot reports each script parse error twice in a row; identical script
+## errors within this window are stored once.
+const DUPLICATE_WINDOW_MSEC := 500
 
 # Logger.ErrorType values (kept as plain numbers so this file does not depend
 # on how the enum is exposed to subclasses).
@@ -20,6 +23,8 @@ const ERRTYPE_SHADER := 3
 var _mutex := Mutex.new()
 var _entries: Array = []
 var _last_id := 0
+var _last_script_key := ""
+var _last_script_msec := 0
 
 
 func _log_message(message: String, error: bool) -> void:
@@ -87,6 +92,15 @@ func _add(entry: Dictionary) -> void:
 	if not entry.has("source"):
 		entry["source"] = "editor"
 	_mutex.lock()
+	if entry.get("kind", "") == "script":
+		var key := "%s|%s|%s|%s" % [entry["level"], entry["text"], entry.get("file", ""), entry.get("line", 0)]
+		var now := Time.get_ticks_msec()
+		var is_duplicate := key == _last_script_key and now - _last_script_msec <= DUPLICATE_WINDOW_MSEC
+		_last_script_key = key
+		_last_script_msec = now
+		if is_duplicate:
+			_mutex.unlock()
+			return
 	_last_id += 1
 	entry["id"] = _last_id
 	_entries.append(entry)

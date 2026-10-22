@@ -253,6 +253,13 @@ func _write_script(path: String, text: String) -> Dictionary:
 		if dir_err != OK:
 			return {"error": "Could not create folder %s: %s" % [folder, error_string(dir_err)]}
 
+	# Remember where the log stands BEFORE touching the file: for a new file the
+	# editor can report the parse error already while it notices the file
+	# (update_file), not only during reload().
+	var log_mark := 0
+	if _log != null:
+		log_mark = _log.last_id()
+
 	var file := FileAccess.open(path, FileAccess.WRITE)
 	if file == null:
 		return {"error": "Could not open %s for writing: %s" % [path, error_string(FileAccess.get_open_error())]}
@@ -268,9 +275,6 @@ func _write_script(path: String, text: String) -> Dictionary:
 	# otherwise load it fresh from disk. reload() then compiles it and its result
 	# tells us whether it is valid. (can_instantiate() is NOT usable for this: in
 	# the editor it returns false for every script that is not marked @tool.)
-	var log_mark := 0
-	if _log != null:
-		log_mark = _log.last_id()
 	var was_cached := ResourceLoader.has_cached(path)
 	var compiles := false
 	var reload_error: int = ERR_FILE_NOT_FOUND
@@ -285,7 +289,7 @@ func _write_script(path: String, text: String) -> Dictionary:
 	var result := {"path": path, "bytes": text.to_utf8_buffer().size(), "compiles": compiles}
 	if not compiles:
 		result["note"] = "The script did not compile (%s)." % error_string(reload_error)
-		var problems := _errors_since(log_mark)
+		var problems := _errors_since(log_mark, path)
 		if problems.is_empty():
 			result["note"] += " Check the Output panel for the error."
 		else:
@@ -293,12 +297,24 @@ func _write_script(path: String, text: String) -> Dictionary:
 	return result
 
 
-## Error messages the editor logged since the given log id, as short strings.
-func _errors_since(since_id: int) -> Array:
+## Error messages the editor logged since the given log id that concern the
+## given script (by file or by mention in the text), as short strings.
+func _errors_since(since_id: int, script_path: String) -> Array:
 	var out := []
 	if _log == null:
 		return out
-	for entry in _log.read(since_id, "error", 10):
+	var matching := []
+	var has_script_error := false
+	for entry in _log.read(since_id, "error", 20):
+		if str(entry.get("file", "")) != script_path and not script_path in str(entry["text"]):
+			continue
+		matching.append(entry)
+		if entry.get("kind", "") == "script":
+			has_script_error = true
+	for entry in matching:
+		# The parse error itself is what matters; skip generic "failed to load" follow-ups.
+		if has_script_error and entry.get("kind", "") != "script":
+			continue
 		var text := str(entry["text"])
 		if entry.has("file") and not str(entry["file"]).is_empty():
 			text += " (%s:%d)" % [entry["file"], int(entry.get("line", 0))]

@@ -10,6 +10,8 @@ var _status_label := Label.new()
 var _url_label := Label.new()
 var _buttons: Array[Button] = []
 var _port := 0
+var _preferred_port := 6550
+var _port_spin := SpinBox.new()
 var _read_only_check := CheckButton.new()
 var _log_view := RichTextLabel.new()
 var _registry = null
@@ -17,6 +19,9 @@ var _log_dirty := false
 
 ## Emitted when the user flips the read-only switch.
 signal read_only_toggled(enabled: bool)
+
+## Emitted when the user applies a new port number.
+signal port_change_requested(port: int)
 
 
 func _init() -> void:
@@ -30,8 +35,24 @@ func _init() -> void:
 	_read_only_check.tooltip_text = "When on, AI clients can read the project but every tool that changes it, runs the game or edits files is refused."
 	_read_only_check.toggled.connect(func(on: bool): read_only_toggled.emit(on))
 	add_child(_read_only_check)
+	var port_row := HBoxContainer.new()
+	var port_label := Label.new()
+	port_label.text = "Port (saved in project.godot):"
+	port_row.add_child(port_label)
+	_port_spin.min_value = 1024
+	_port_spin.max_value = 65535
+	_port_spin.step = 1
+	_port_spin.value = _preferred_port
+	port_row.add_child(_port_spin)
+	var apply_button := Button.new()
+	apply_button.text = "Apply"
+	apply_button.tooltip_text = "Restart the server on this port. Clients configured for the old port must be updated with the copy buttons below."
+	apply_button.pressed.connect(func(): port_change_requested.emit(int(_port_spin.value)))
+	port_row.add_child(apply_button)
+	add_child(port_row)
 	_add_copy_button("Copy Claude Code command", _claude_code_command)
 	_add_copy_button("Copy Claude Desktop config", _claude_desktop_config)
+	_add_copy_button("Copy Claude Desktop entry only (to merge into an existing config)", _claude_desktop_entry)
 	var log_title := Label.new()
 	log_title.text = "Tool calls (newest at the bottom)"
 	add_child(log_title)
@@ -93,11 +114,19 @@ func set_read_only(enabled: bool) -> void:
 	_read_only_check.set_pressed_no_signal(enabled)
 
 
+## Shows the port setting (the one the server tries first) in the spin box.
+func set_preferred_port(port: int) -> void:
+	_preferred_port = port
+	_port_spin.set_value_no_signal(port)
+
+
 ## Pass the listening port, or 0 when the server is not running.
 func set_port(port: int) -> void:
 	_port = port
 	if port > 0:
 		_status_label.text = "Status: running on 127.0.0.1:%d" % port
+		if port != _preferred_port:
+			_status_label.text += " (port %d was busy)" % _preferred_port
 		_url_label.text = "Endpoint: %s" % _endpoint_url()
 	else:
 		_status_label.text = "Status: not running (no free port found)"
@@ -122,15 +151,19 @@ func _claude_code_command() -> String:
 	return "claude mcp add --transport http %s %s" % [CLIENT_SERVER_NAME, _endpoint_url()]
 
 
+func _desktop_server_entry() -> Dictionary:
+	return {"command": "npx", "args": ["-y", "mcp-remote", _endpoint_url()]}
+
+
+# Just the server entry, for people who already have other servers configured.
+func _claude_desktop_entry() -> String:
+	var text := JSON.stringify({CLIENT_SERVER_NAME: _desktop_server_entry()}, "  ")
+	# Strip the outer braces so it can be pasted inside an existing "mcpServers" object.
+	return text.trim_prefix("{\n").trim_suffix("\n}")
+
+
 # Claude Desktop launches stdio servers from its config file, so the HTTP
 # endpoint is reached through the mcp-remote bridge (needs Node.js).
 func _claude_desktop_config() -> String:
-	var config := {
-		"mcpServers": {
-			CLIENT_SERVER_NAME: {
-				"command": "npx",
-				"args": ["-y", "mcp-remote", _endpoint_url()],
-			}
-		}
-	}
+	var config := {"mcpServers": {CLIENT_SERVER_NAME: _desktop_server_entry()}}
 	return JSON.stringify(config, "  ")

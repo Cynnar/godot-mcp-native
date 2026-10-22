@@ -134,7 +134,7 @@ func _set_project_setting(arguments: Dictionary) -> Dictionary:
 	var setting_name := str(arguments.get("name", "")).strip_edges()
 	if not "/" in setting_name:
 		return {"error": "Setting names look like section/name, e.g. application/config/name."}
-	if setting_name in PROTECTED_SETTINGS or setting_name.begins_with("autoload/GodotMcpNative"):
+	if setting_name in PROTECTED_SETTINGS or setting_name.begins_with("autoload/GodotMcpNative") or setting_name.begins_with("godot_mcp_native/"):
 		return {"error": "'%s' is managed by the MCP plugin and can't be changed with this tool." % setting_name}
 	if not arguments.has("value"):
 		return {"error": "Missing 'value'."}
