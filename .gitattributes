@@ -6,3 +6,5 @@
 /.gitattributes export-ignore
 /.gitignore export-ignore
 /project.godot export-ignore
+/scenes export-ignore
+/scripts export-ignore
