@@ -61,7 +61,10 @@ func register(registry) -> void:
 func _get_scene_info(_arguments: Dictionary) -> Dictionary:
 	var open_scenes := []
 	for scene_path in EditorInterface.get_open_scenes():
-		open_scenes.append(scene_path)
+		# Godot 4.8 beta reports one empty path when no scene is open; unsaved
+		# scenes have no path either, so empty entries are skipped.
+		if not str(scene_path).is_empty():
+			open_scenes.append(scene_path)
 	var info := {
 		"godot_version": Engine.get_version_info().get("string", "unknown"),
 		"project_name": ProjectSettings.get_setting("application/config/name", ""),
