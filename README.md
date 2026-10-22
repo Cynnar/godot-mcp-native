@@ -2,7 +2,7 @@
 
 Drop-in Godot 4 editor plugin that runs a built-in MCP server, so Claude and other AI clients can control the editor with no Python, Node or extra setup.
 
-> **Status: early development (v0.1.0).** The server, MCP protocol layer and a `ping` tool work end to end, plus read tools, undoable scene write tools, script tools and run control. Game screenshots and output from the running game are next.
+> **Status: early release (v0.1.0).** Tested on Godot 4.7.2. It uses editor APIs that arrived around Godot 4.5, so older 4.x versions are not expected to work and have not been tested.
 
 ## How it works
 
@@ -14,9 +14,14 @@ The plugin runs a small HTTP server inside the editor and speaks MCP directly. T
 
 ## Install
 
-1. Copy `addons/godot_mcp_native/` into your project's `addons/` folder.
-2. Open **Project > Project Settings > Plugins** and enable **Godot MCP Native**.
-3. Open the **MCP** panel at the bottom of the editor and click the copy button for your client.
+**From the Godot Asset Library:** open the **AssetLib** tab in the editor, search for *Godot MCP Native*, download and install it.
+
+**Manually:** copy `addons/godot_mcp_native/` from this repository into your project's `addons/` folder.
+
+Then:
+
+1. Open **Project > Project Settings > Plugins** and enable **Godot MCP Native**.
+2. Open the **MCP** panel at the bottom of the editor and click the copy button for your client.
 
 ### Claude Code
 
@@ -28,9 +33,11 @@ claude mcp add --transport http godot-native http://127.0.0.1:6550/mcp
 
 ### Claude Desktop
 
-Click **Copy Claude Desktop config** and merge it into `claude_desktop_config.json`, then restart Claude Desktop. Claude Desktop starts local servers over stdio, so the config uses the `mcp-remote` bridge, which needs Node.js.
+Click **Copy Claude Desktop config** and merge it into `claude_desktop_config.json`, then restart Claude Desktop. If you already have other servers configured, use **Copy Claude Desktop entry only** and paste the block inside your existing `mcpServers` section. Claude Desktop starts local servers over stdio, so the config uses the `mcp-remote` bridge, which needs Node.js.
 
 ## Tools
+
+**Inspect**
 
 | Tool | What it does |
 |---|---|
@@ -38,35 +45,68 @@ Click **Copy Claude Desktop config** and merge it into `claude_desktop_config.js
 | `get_scene_info` | Open scenes, the scene being edited, root node, node count, play state |
 | `get_hierarchy` | Node tree of the edited scene (name, type, path, script) |
 | `get_node_properties` | Editor-visible properties of a node |
+| `list_files` | List project files, optionally by extension |
+
+**Edit the open scene** (all undoable with Ctrl+Z)
+
+| Tool | What it does |
+|---|---|
 | `create_node` | Create a node of any Godot node class, optionally with initial properties |
-| `set_property` | Set a node property (supports Godot text form, JSON arrays for vectors/colors, `res://` paths for resources) |
+| `set_property` | Set a node property (Godot text form, JSON arrays for vectors/colors, `res://` paths for resources) |
 | `delete_node` | Delete a node and its children (not the scene root) |
+| `rename_node` / `reparent_node` / `duplicate_node` | Restructure the scene tree |
+| `instantiate_scene` | Add an instance of another scene as a child |
+| `set_transform` | Set position, rotation and scale of a 2D or 3D node |
+
+**Scenes**
+
+| Tool | What it does |
+|---|---|
+| `new_scene` | Create a scene file with a root node and open it |
+| `open_scene` | Open an existing scene |
 | `save_scene` | Save the edited scene, or save a new scene to a `res://` path |
 
-| `list_scripts` | List `.gd` files in the project |
-| `view_script` | Read a script (line ranges supported) |
+**Scripts**
+
+| Tool | What it does |
+|---|---|
+| `list_scripts` / `view_script` | List `.gd` files; read a script (line ranges supported) |
 | `create_script` | Create a script, from a template or full source |
-| `update_script` | Replace a whole script file |
-| `edit_script` | Replace an exact piece of text in a script |
+| `update_script` / `edit_script` | Replace a whole script, or an exact piece of text in it |
 | `attach_script` | Attach or detach a script on a node |
-| `play_scene` | Run the edited scene, the main scene, or a `res://` scene |
-| `new_scene` / `open_scene` | Create a scene file with a root node, or open an existing one |
-| `instantiate_scene` | Add an instance of another scene as a child |
-| `rename_node` / `reparent_node` / `duplicate_node` | Restructure the scene tree (undoable) |
-| `set_transform` | Set position, rotation and scale of a 2D or 3D node (undoable) |
+
+Script tools report compile errors straight away (`compiles`, `compile_errors`).
+
+**Project settings, input and resources**
+
+| Tool | What it does |
+|---|---|
 | `list_project_settings` / `get_project_setting` / `set_project_setting` | Read and change project settings (saved to project.godot) |
 | `list_input_actions` / `add_input_action` / `remove_input_action` | Manage the Input Map |
-| `list_files` | List project files, optionally by extension |
-| `create_resource` / `get_resource_properties` / `set_resource_property` | Create and edit .tres resources (materials, themes, shapes, ...) |
-| `stop_scene` | Stop the running scene |
+| `create_resource` / `get_resource_properties` / `set_resource_property` | Create and edit `.tres` resources (materials, themes, shapes, ...) |
+
+**Run and debug**
+
+| Tool | What it does |
+|---|---|
+| `play_scene` / `stop_scene` | Run the edited scene, the main scene or a `res://` scene; stop it |
 | `get_output_log` | Recent log messages from the editor and the running game (filter with `source`) |
 | `get_game_screenshot` | Image of what the running game is drawing |
 
-Scene changes go through the editor's undo/redo, so **Ctrl+Z** reverts what the AI did. Script file changes are written to disk and are not part of that history, so use version control (git) to roll them back. The plugin's own scripts are protected from modification.
+Node paths are relative to the root of the scene being edited. Godot types such as `Vector3` or `Color` are returned in Godot text form, e.g. `"Vector3(1, 2, 3)"`.
+
+## The game bridge
 
 The running game is a separate process, so the plugin adds a small autoload (`GodotMcpNativeBridge`) to `project.godot` while it is enabled. It talks to the editor over Godot's debugger channel to provide game screenshots and game log output, and does nothing in exported builds. Disabling the plugin removes the autoload. If you export the project, remove the autoload (or the addon) first.
 
-Node paths are relative to the root of the scene being edited. Godot types such as `Vector3` or `Color` are returned in Godot text form, e.g. `"Vector3(1, 2, 3)"`.
+## Known limits
+
+- **Undo:** scene edits go through the editor's undo/redo. Script files, project settings, input map changes and resource files are written straight to disk and are **not** undoable; use version control (git) to roll those back.
+- **No deleting files.** The tools can create and edit files but never delete them.
+- **GDScript only.** C# scripts are not supported by the script tools.
+- **Editor only.** Tools work while the editor is open; the server is not part of exported games.
+- **Plugin files are protected.** The plugin's own scripts and settings can't be changed through the tools.
+- **Screenshots** show what the game's main viewport is drawing, downscaled by default.
 
 ## Security
 
@@ -80,7 +120,7 @@ The server binds to `127.0.0.1` only and rejects requests whose `Host` or `Origi
 
 ## Developing
 
-Open this repository's root folder in Godot 4.7 (Project Manager > Import). `project.godot` is a minimal test project and is excluded from release archives by `.gitattributes`.
+Open this repository's root folder in Godot 4.7 (Project Manager > Import). `project.godot`, `scenes/` and `scripts/` are a minimal test project and are excluded from release archives by `.gitattributes`.
 
 Quick check with the plugin enabled: open <http://127.0.0.1:6550/health> in a browser.
 
