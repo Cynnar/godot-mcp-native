@@ -12,6 +12,10 @@ Claude  <--MCP over HTTP (localhost)-->  Godot editor plugin (GDScript)
 
 The plugin runs a small HTTP server inside the editor and speaks MCP directly. There is no separate server process to install or keep running.
 
+The **MCP** panel at the bottom of the editor shows the server status, setup buttons for your client, the read-only switch and a live log of every tool call:
+
+![The MCP panel in the Godot editor](docs/panel.png)
+
 ## Install
 
 **From the Godot Asset Library:** open the **AssetLib** tab in the editor, search for *Godot MCP Native*, download and install it.

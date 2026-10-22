@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <title>Godot MCP Native</title>
+  <rect width="128" height="128" rx="26" fill="#1d2735"/>
+  <g stroke="#4fd1c5" stroke-width="6" stroke-linecap="round" fill="none">
+    <path d="M64 40 L64 66"/>
+    <path d="M64 66 L36 90"/>
+    <path d="M64 66 L92 90"/>
+  </g>
+  <circle cx="64" cy="34" r="15" fill="#4fd1c5"/>
+  <circle cx="36" cy="94" r="12" fill="#e8eef5"/>
+  <circle cx="92" cy="94" r="12" fill="#e8eef5"/>
+  <circle cx="64" cy="66" r="7" fill="#1d2735" stroke="#4fd1c5" stroke-width="5"/>
+</svg>
