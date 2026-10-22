@@ -21,7 +21,8 @@ func register(registry, game_bridge) -> void:
 				},
 			},
 		},
-		_get_game_screenshot
+		_get_game_screenshot,
+		true
 	)
 
 

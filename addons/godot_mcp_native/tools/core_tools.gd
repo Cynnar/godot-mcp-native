@@ -8,7 +8,8 @@ func register(registry) -> void:
 		"ping",
 		"Check that the Godot editor is reachable. Returns the Godot version and the open project's name.",
 		{"type": "object", "properties": {}},
-		_ping
+		_ping,
+		true
 	)
 
 

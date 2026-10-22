@@ -5,16 +5,22 @@ extends RefCounted
 ## NOTE: a Callable does not keep a RefCounted object alive, so whoever creates
 ## a tool module must keep a reference to it (plugin.gd does).
 
-var _tools := {}  # tool name -> {"description": String, "schema": Dictionary, "callable": Callable}
+var _tools := {}  # tool name -> {"description": String, "schema": Dictionary, "callable": Callable, "read_only": bool}
+
+## When true, only tools registered as read-only can run.
+var read_only_mode := false
 
 
 ## callable signature: func(arguments: Dictionary) -> Variant
 ## Return a Dictionary containing an "error" key to report a tool failure.
-func add_tool(tool_name: String, description: String, input_schema: Dictionary, callable: Callable) -> void:
+## read_only: pass true only for tools that never change the project, the open
+## scene or the editor state. Everything else is blocked in read-only mode.
+func add_tool(tool_name: String, description: String, input_schema: Dictionary, callable: Callable, read_only: bool = false) -> void:
 	_tools[tool_name] = {
 		"description": description,
 		"schema": input_schema,
 		"callable": callable,
+		"read_only": read_only,
 	}
 
 
@@ -31,6 +37,7 @@ func list_tools() -> Array:
 			"name": tool_name,
 			"description": t["description"],
 			"inputSchema": t["schema"],
+			"annotations": {"readOnlyHint": t["read_only"]},
 		})
 	return out
 
@@ -38,6 +45,8 @@ func list_tools() -> Array:
 ## Runs a tool. Returns the tool's raw result (possibly an AsyncResult).
 func call_tool(tool_name: String, arguments: Dictionary) -> Variant:
 	var t: Dictionary = _tools[tool_name]
+	if read_only_mode and not t["read_only"]:
+		return {"error": "Read-only mode is on in the Godot MCP dock, so '%s' is blocked. Turn off \"Read-only mode\" in the MCP panel to allow changes." % tool_name}
 	var callable: Callable = t["callable"]
 	return callable.call(arguments)
 

@@ -11,7 +11,8 @@ func register(registry) -> void:
 		"get_scene_info",
 		"Describe the editor's current state: open scenes, the scene being edited, its root node, node count and whether a scene is running.",
 		{"type": "object", "properties": {}},
-		_get_scene_info
+		_get_scene_info,
+		true
 	)
 	registry.add_tool(
 		"get_hierarchy",
@@ -31,7 +32,8 @@ func register(registry) -> void:
 				},
 			},
 		},
-		_get_hierarchy
+		_get_hierarchy,
+		true
 	)
 	registry.add_tool(
 		"get_node_properties",
@@ -51,7 +53,8 @@ func register(registry) -> void:
 			},
 			"required": ["node_path"],
 		},
-		_get_node_properties
+		_get_node_properties,
+		true
 	)
 
 

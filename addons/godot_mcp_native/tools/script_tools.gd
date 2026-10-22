@@ -26,7 +26,8 @@ func register(registry, plugin: EditorPlugin, log_capture = null) -> void:
 				"include_addons": {"type": "boolean", "description": "Also list scripts under res://addons. Default false."},
 			},
 		},
-		_list_scripts
+		_list_scripts,
+		true
 	)
 	registry.add_tool(
 		"view_script",
@@ -40,7 +41,8 @@ func register(registry, plugin: EditorPlugin, log_capture = null) -> void:
 			},
 			"required": ["path"],
 		},
-		_view_script
+		_view_script,
+		true
 	)
 	registry.add_tool(
 		"create_script",

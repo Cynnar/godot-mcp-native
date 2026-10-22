@@ -60,7 +60,8 @@ func register(registry, log_capture) -> void:
 				},
 			},
 		},
-		_get_output_log
+		_get_output_log,
+		true
 	)
 
 

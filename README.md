@@ -50,6 +50,14 @@ Click **Copy Claude Desktop config** and merge it into `claude_desktop_config.js
 | `edit_script` | Replace an exact piece of text in a script |
 | `attach_script` | Attach or detach a script on a node |
 | `play_scene` | Run the edited scene, the main scene, or a `res://` scene |
+| `new_scene` / `open_scene` | Create a scene file with a root node, or open an existing one |
+| `instantiate_scene` | Add an instance of another scene as a child |
+| `rename_node` / `reparent_node` / `duplicate_node` | Restructure the scene tree (undoable) |
+| `set_transform` | Set position, rotation and scale of a 2D or 3D node (undoable) |
+| `list_project_settings` / `get_project_setting` / `set_project_setting` | Read and change project settings (saved to project.godot) |
+| `list_input_actions` / `add_input_action` / `remove_input_action` | Manage the Input Map |
+| `list_files` | List project files, optionally by extension |
+| `create_resource` / `get_resource_properties` / `set_resource_property` | Create and edit .tres resources (materials, themes, shapes, ...) |
 | `stop_scene` | Stop the running scene |
 | `get_output_log` | Recent log messages from the editor and the running game (filter with `source`) |
 | `get_game_screenshot` | Image of what the running game is drawing |
@@ -63,6 +71,8 @@ Node paths are relative to the root of the scene being edited. Godot types such 
 ## Security
 
 The server binds to `127.0.0.1` only and rejects requests whose `Host` or `Origin` is not local. It can still modify your project, so only enable the plugin in projects you are comfortable letting your AI client edit.
+
+**Read-only mode:** the MCP panel has a *Read-only mode* switch. While it is on, only tools that look but don't touch (reading scenes, scripts, settings, logs, screenshots) work; everything that changes the project or runs the game is refused. The switch is stored in your editor settings (not the project), and only a person can flip it, not the AI client. Read-only tools are marked with `readOnlyHint` in the tool list.
 
 ## Developing
 

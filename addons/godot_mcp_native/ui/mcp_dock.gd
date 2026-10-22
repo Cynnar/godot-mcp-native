@@ -10,6 +10,10 @@ var _status_label := Label.new()
 var _url_label := Label.new()
 var _buttons: Array[Button] = []
 var _port := 0
+var _read_only_check := CheckButton.new()
+
+## Emitted when the user flips the read-only switch.
+signal read_only_toggled(enabled: bool)
 
 
 func _init() -> void:
@@ -19,9 +23,18 @@ func _init() -> void:
 	add_child(title)
 	add_child(_status_label)
 	add_child(_url_label)
+	_read_only_check.text = "Read-only mode (block all changes)"
+	_read_only_check.tooltip_text = "When on, AI clients can read the project but every tool that changes it, runs the game or edits files is refused."
+	_read_only_check.toggled.connect(func(on: bool): read_only_toggled.emit(on))
+	add_child(_read_only_check)
 	_add_copy_button("Copy Claude Code command", _claude_code_command)
 	_add_copy_button("Copy Claude Desktop config", _claude_desktop_config)
 	set_port(0)
+
+
+## Sets the switch without emitting read_only_toggled.
+func set_read_only(enabled: bool) -> void:
+	_read_only_check.set_pressed_no_signal(enabled)
 
 
 ## Pass the listening port, or 0 when the server is not running.
